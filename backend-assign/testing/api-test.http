@@ -1,0 +1,8 @@
+
+POST http://localhost:8080/api/products HTTP/1.1
+Content-Type: application/json
+
+{
+    "product_name": "name1",
+    "product_id": "1"
+}
