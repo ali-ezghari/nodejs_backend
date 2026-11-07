@@ -4,7 +4,7 @@ let products_data = require("../data/products");
 const pool = require("../config/db");
 
 router.use(express.json());
- 
+
 router.get("/:product_name", async (req, res) => {
   const product_name = req.params.product_name;
   try {
@@ -26,12 +26,16 @@ router.get("/:product_name", async (req, res) => {
   }
 });
 
-router.patch("/:product_id", (req, res) => {
-  const product_id = req.params.product_id;
-  const { product_name } = req.body;
-  let product = products_data.find((product) => product.id == product_id);
+router.patch("/:product_name", async (req, res) => {
+  const product_name = req.params.product_name;
+  const { newPname, newPprice } = req.body;
 
-  if (!product) {
+  const result = await pool.query(
+    "UPDATE app.products SET name = $1, price = $2 WHERE name = $3 RETURNING *",
+    [newPname, newPprice, product_name],
+  );
+  const newUpdatedProduct = result.rows[0];
+  if (!newUpdatedProduct) {
     return res.status(404).json({ message: "Product not found" });
   }
 
@@ -40,8 +44,6 @@ router.patch("/:product_id", (req, res) => {
       .status(400)
       .json({ message: "Invalid information: 'name' is required" });
   }
-
-  product.name = product_name;
 
   res.status(200).json({
     message: `Product updated successfully`,
