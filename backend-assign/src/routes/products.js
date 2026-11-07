@@ -1,21 +1,29 @@
 const express = require("express");
 const router = express.Router();
 let products_data = require("../data/products");
+const pool = require("../config/db");
 
 router.use(express.json());
-
-router.get("/:product_id", (req, res) => {
-  const product = products_data.find(
-    (product) => product.id == req.params.product_id,
-  );
-
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+ 
+router.get("/:product_name", async (req, res) => {
+  const product_name = req.params.product_name;
+  try {
+    const result = await pool.query(
+      "SELECT * FROM app.products WHERE name = $1",
+      [product_name],
+    );
+    const product = result.rows[0];
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.status(200).json({
+      message: `product found => name: ${product_name}`,
+      product: product,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
   }
-  res.status(200).json({
-    message: `product found => name: ${product.name}, id: ${product.id}`,
-    products: products_data,
-  });
 });
 
 router.patch("/:product_id", (req, res) => {
@@ -42,41 +50,55 @@ router.patch("/:product_id", (req, res) => {
   });
 });
 
-router.delete("/:product_id", (req, res) => {
-  const product = products_data.find(
-    (product) => product.id == req.params.product_id,
-  );
+router.delete("/:product_name", async (req, res) => {
+  const { product_name } = req.params;
+  try {
+    const result = await pool.query(
+      "DELETE FROM app.products WHERE name = $1 RETURNING *",
+      [product_name],
+    );
+    const deletedProduct = result.rows[0];
 
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+    if (!deletedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json({
+      message: `product deleted => name: ${product_name}`,
+      products: deletedProduct,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
   }
-  products_data = products_data.filter(
-    (_product) => _product.id != req.params.product_id,
-  );
-
-  res.status(200).json({
-    message: `product deleted => name: ${product.name}, id: ${product.id}`,
-    products: products_data,
-  });
 });
 
-router.post("/", (req, res) => {
-  const { product_name, product_id } = req.body;
+router.post("/", async (req, res) => {
+  const { product_name, product_price } = req.body;
+  try {
+    if (!product_name || !product_price) {
+      return res.status(400).json({ message: "Invalid information" });
+    }
 
-  if (!product_name || !product_id) {
-    return res.status(400).json({ message: "Invalid information" });
+    const result = await pool.query(
+      "INSERT INTO app.products (name, price) VALUES ($1, $2) RETURNING *",
+      [product_name, product_price],
+    );
+    const newProduct = result.rows[0];
+
+    res.status(201).json({
+      message: `product created => name: ${newProduct["name"]}, id: ${newProduct["price"]}`,
+      product: newProduct,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
   }
-
-  products_data.push({ id: product_id, name: product_name });
-
-  res.status(201).json({
-    message: `product created => name: ${product_name}, id: ${product_id}`,
-    products: products_data,
-  });
 });
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+  const result = await pool.query("SELECT * FROM app.products");
   res
     .status(200)
-    .json({ message: "Returning all products", products: products_data });
+    .json({ message: "Returning all products", products: result.rows });
 });
 module.exports = router;

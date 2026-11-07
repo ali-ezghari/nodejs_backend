@@ -1,8 +1,8 @@
 
-POST http://localhost:8080/api/products HTTP/1.1
+Get http://localhost:8181/api/products/Tea HTTP/1.1
 Content-Type: application/json
 
-{
-    "product_name": "name1",
-    "product_id": "1"
-}
+# {
+#     "product_name": "cafe noir",
+#     "product_price": "1"
+# }
