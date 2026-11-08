@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-let products_data = require("../data/products");
 const pool = require("../config/db");
 
 router.use(express.json());
@@ -12,27 +11,25 @@ router.get("/:product_name", async (req, res) => {
       "SELECT * FROM app.products WHERE name = $1",
       [product_name],
     );
-    const product = result.rows[0];
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+    if (!result.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
     }
     res.status(200).json({
-      message: `product found => name: ${product_name}`,
-      product: product,
+      product: result.rows[0],
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 router.patch("/:product_name", async (req, res) => {
   const product_name = req.params.product_name;
-  const { newPname, newPprice } = req.body;
+  const { newPprice } = req.body;
 
   const result = await pool.query(
-    "UPDATE app.products SET name = $1, price = $2 WHERE name = $3 RETURNING *",
-    [newPname, newPprice, product_name],
+    "UPDATE app.products SET price = $1 WHERE name = $2 RETURNING *",
+    [newPprice, product_name],
   );
   const newUpdatedProduct = result.rows[0];
   if (!newUpdatedProduct) {
@@ -47,8 +44,7 @@ router.patch("/:product_name", async (req, res) => {
 
   res.status(200).json({
     message: `Product updated successfully`,
-    updated_product: product,
-    products: products_data,
+    updated_product: newUpdatedProduct,
   });
 });
 
@@ -88,19 +84,21 @@ router.post("/", async (req, res) => {
     );
     const newProduct = result.rows[0];
 
-    res.status(201).json({
-      message: `product created => name: ${newProduct["name"]}, id: ${newProduct["price"]}`,
-      product: newProduct,
-    });
+    res.status(201).json(newProduct);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 router.get("/", async (req, res) => {
-  const result = await pool.query("SELECT * FROM app.products");
-  res
-    .status(200)
-    .json({ message: "Returning all products", products: result.rows });
+  try {
+    const result = await pool.query("SELECT * FROM app.products");
+    res
+      .status(200)
+      .json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 module.exports = router;
